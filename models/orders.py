@@ -156,46 +156,50 @@ class sale_order(models.Model):
         return None
 
     def confirm_ml(self):
+        try:
+            company = self.env.user.company_id
+            stock_picking = self.env["stock.picking"]
 
-        company = self.env.user.company_id
-        stock_picking = self.env["stock.picking"]
+            if (self.meli_status=="cancelled"):
+                self.action_cancel()
 
-        if (self.meli_status=="cancelled"):
-            self.action_cancel()
+            if (company.mercadolibre_order_confirmation=="paid_confirm"):
 
-        if (company.mercadolibre_order_confirmation=="paid_confirm"):
+                if ( (self.state=="draft" or self.state=="sent") and self.meli_status=="paid"):
+                    _logger.info("paid_confirm ok! confirming sale")
+                    self.action_confirm()
 
-            if ( (self.state=="draft" or self.state=="sent") and self.meli_status=="paid"):
-                _logger.info("paid_confirm ok! confirming sale")
-                self.action_confirm()
+            if (company.mercadolibre_order_confirmation=="paid_delivered"):
 
-        if (company.mercadolibre_order_confirmation=="paid_delivered"):
+                if ( (self.state=="draft" or self.state=="sent") and self.meli_status=="paid"):
+                    _logger.info("paid_delivered ok! confirming sale")
+                    self.action_confirm()
 
-            if ( (self.state=="draft" or self.state=="sent") and self.meli_status=="paid"):
-                _logger.info("paid_delivered ok! confirming sale")
-                self.action_confirm()
-
-            if (self.state=="sale" or self.state=="done"):
-                #spick = stock_picking.search([('order_id','=',self.id)])
-                _logger.info("paid_delivered ok! delivering")
-                for spick in self.picking_ids:
-                    _logger.info(spick)
-                    if (spick.move_line_ids):
-                        _logger.info(spick.move_line_ids)
-                        if (len(spick.move_line_ids)>=1):
-                            for pop in spick.move_line_ids:
-                                _logger.info(pop)
-                                if (pop.qty_done==0.0 and pop.product_qty>=0.0):
-                                    pop.qty_done = pop.product_qty
-                            _logger.info("do_new_transfer")
-                            spick.action_done()
+                if (self.state=="sale" or self.state=="done"):
+                    #spick = stock_picking.search([('order_id','=',self.id)])
+                    _logger.info("paid_delivered ok! delivering")
+                    for spick in self.picking_ids:
+                        _logger.info(spick)
+                        if (spick.move_line_ids):
+                            _logger.info(spick.move_line_ids)
+                            if (len(spick.move_line_ids)>=1):
+                                for pop in spick.move_line_ids:
+                                    _logger.info(pop)
+                                    if (pop.qty_done==0.0 and pop.product_qty>=0.0):
+                                        pop.qty_done = pop.product_qty
+                                _logger.info("do_new_transfer")
+                                spick.action_done()
 
 
-        if (company.mercadolibre_order_confirmation=="paid_confirm_with_invoice"):
-            if ( (self.state=="draft" or self.state=="sent") and self.meli_status=="paid"):
-                _logger.info("paid_confirm with invoice ok! confirming sale and create invoice")
-                self.action_confirm()
-                self.action_invoice_create()
+            if (company.mercadolibre_order_confirmation=="paid_confirm_with_invoice"):
+                if ( (self.state=="draft" or self.state=="sent") and self.meli_status=="paid"):
+                    _logger.info("paid_confirm with invoice ok! confirming sale and create invoice")
+                    self.action_confirm()
+                    self.action_invoice_create()
+        except Exception as e:
+            _logger.info("Confirm Order Exception")
+            _logger.error(e, exc_info=True)
+            pass
 
     _sql_constraints = [
         ('unique_meli_order_id', 'unique(meli_order_id)', 'Mei Order id already exists!')
