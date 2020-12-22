@@ -1035,7 +1035,7 @@ class mercadolibre_orders(models.Model):
         else:
             try:
                 self.orders_update_order_json( {"id": order.id, "order_json": order_json } )
-                self._cr.commit()
+                #self._cr.commit()
             except Exception as e:
                 _logger.info("orders_update_order > Error actualizando ORDEN")
                 _logger.error(e, exc_info=True)
